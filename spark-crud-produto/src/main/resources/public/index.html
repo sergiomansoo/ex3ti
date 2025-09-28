@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Produtos</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        .btn-edit {
+            color: #fff;
+        }
+        .product-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .product-info {
+            flex-grow: 1;
+        }
+        .product-actions {
+            flex-shrink: 0;
+            margin-left: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Gestão de Produtos</h1>
+        <div class="row">
+            <!-- Coluna do Formulário -->
+            <div class="col-lg-4 mb-4">
+                <div class="card p-4">
+                    <h3 id="form-title" class="mb-3">Adicionar Novo Produto</h3>
+                    <form id="produtoForm">
+                        <input type="hidden" id="produtoId">
+                        <div class="mb-3">
+                            <label for="nome" class="form-label">Nome do Produto</label>
+                            <input type="text" class="form-control" id="nome" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="descricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" id="descricao" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="preco" class="form-label">Preço (R$)</label>
+                            <input type="number" class="form-control" id="preco" step="0.01" required>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Salvar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Coluna da Lista de Produtos -->
+            <div class="col-lg-8">
+                <div class="card p-4">
+                    <h3 class="mb-3">Produtos Cadastrados</h3>
+                    <ul class="list-group" id="listaProdutos">
+                        <!-- Produtos serão carregados aqui -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const produtoForm = document.getElementById('produtoForm');
+            const produtoIdInput = document.getElementById('produtoId');
+            const nomeInput = document.getElementById('nome');
+            const descricaoInput = document.getElementById('descricao');
+            const precoInput = document.getElementById('preco');
+            const listaProdutosUl = document.getElementById('listaProdutos');
+            const formTitle = document.getElementById('form-title');
+            const submitButton = produtoForm.querySelector('button[type="submit"]');
+
+            const API_URL = '/produtos';
+
+            // Função para resetar o formulário para o estado inicial
+            function resetForm() {
+                produtoForm.reset();
+                produtoIdInput.value = '';
+                formTitle.textContent = 'Adicionar Novo Produto';
+                submitButton.innerHTML = '<i class="bi bi-check-circle"></i> Salvar';
+                submitButton.classList.remove('btn-warning');
+                submitButton.classList.add('btn-primary');
+            }
+
+            // Função para buscar e exibir todos os produtos
+            async function fetchProdutos() {
+                try {
+                    const response = await fetch(API_URL);
+                    if (!response.ok) {
+                        // O erro 500 será capturado aqui
+                        throw new Error(`Falha ao buscar produtos. Status: ${response.status}`);
+                    }
+                    const produtos = await response.json();
+                    renderProdutos(produtos);
+                } catch (error) {
+                    console.error('Erro ao carregar produtos:', error);
+                    listaProdutosUl.innerHTML = `<li class="list-group-item text-danger">Erro ao carregar produtos. Verifique o console do Eclipse para detalhes do erro no servidor.</li>`;
+                }
+            }
+
+            // Função para renderizar os produtos na tela
+            function renderProdutos(produtos) {
+                listaProdutosUl.innerHTML = '';
+                if (produtos.length === 0) {
+                    listaProdutosUl.innerHTML = '<li class="list-group-item">Nenhum produto cadastrado.</li>';
+                    return;
+                }
+                produtos.forEach(produto => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item product-list-item';
+                    li.innerHTML = `
+                        <div class="product-info">
+                            <h5 class="mb-1">${produto.nome}</h5>
+                            <p class="mb-1 text-muted">${produto.descricao || 'Sem descrição'}</p>
+                            <strong class="text-success">R$ ${Number(produto.preco).toFixed(2).replace('.', ',')}</strong>
+                        </div>
+                        <div class="product-actions">
+                            <button class="btn btn-warning btn-sm btn-edit" data-id="${produto.id}" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-danger btn-sm" data-id="${produto.id}" title="Excluir">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                    listaProdutosUl.appendChild(li);
+                });
+
+                // Adiciona listeners para os botões de editar e excluir
+                listaProdutosUl.querySelectorAll('.btn-warning').forEach(button => {
+                    button.addEventListener('click', (e) => loadProdutoForEdit(e.currentTarget.dataset.id));
+                });
+                listaProdutosUl.querySelectorAll('.btn-danger').forEach(button => {
+                    button.addEventListener('click', (e) => deleteProduto(e.currentTarget.dataset.id));
+                });
+            }
+            
+            async function loadProdutoForEdit(id) {
+                try {
+                    const response = await fetch(`${API_URL}/${id}`);
+                    if (!response.ok) throw new Error('Produto não encontrado para edição.');
+                    const produto = await response.json();
+
+                    produtoIdInput.value = produto.id;
+                    nomeInput.value = produto.nome;
+                    descricaoInput.value = produto.descricao;
+                    precoInput.value = produto.preco;
+                    
+                    formTitle.textContent = 'Editando Produto';
+                    submitButton.innerHTML = '<i class="bi bi-save"></i> Atualizar';
+                    submitButton.classList.remove('btn-primary');
+                    submitButton.classList.add('btn-warning');
+                    
+                    window.scrollTo(0, 0); // Rola a tela para o topo
+                } catch (error) {
+                    console.error('Erro ao carregar produto para edição:', error);
+                    alert('Erro ao carregar produto para edição.');
+                }
+            }
+            
+            produtoForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const id = produtoIdInput.value;
+                const produtoData = {
+                    nome: nomeInput.value,
+                    descricao: descricaoInput.value,
+                    preco: parseFloat(precoInput.value)
+                };
+
+                const method = id ? 'PUT' : 'POST';
+                const url = id ? `${API_URL}/${id}` : API_URL;
+
+                try {
+                    const response = await fetch(url, {
+                        method: method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(produtoData)
+                    });
+
+                    if (!response.ok) throw new Error('Falha na operação com o produto.');
+                    
+                    resetForm();
+                    fetchProdutos();
+                } catch (error) {
+                    console.error('Erro ao salvar/atualizar produto:', error);
+                    alert('Erro ao salvar/atualizar produto.');
+                }
+            });
+
+            async function deleteProduto(id) {
+                if (!confirm('Tem certeza que deseja excluir este produto?')) return;
+                
+                try {	
+                    const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+                    if (!response.ok) throw new Error('Falha ao excluir produto.');
+                    
+                    fetchProdutos();
+                } catch (error) {
+                    console.error('Erro ao excluir produto:', error);
+                    alert('Erro ao excluir produto.');
+                }
+            }
+
+            fetchProdutos();
+        });
+    </script>
+</body>
+</html>
