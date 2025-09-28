@@ -12,17 +12,16 @@
 	    }
 
 	    private void setupRoutes() {
-	        // Rota para servir arquivos estáticos (como o HTML, CSS, JS)
-	        // Certifique-se de que a pasta 'src/main/resources/public' existe e contém seus arquivos estáticos
+	       
 	        staticFiles.location("/public");
 
-	        // Rota principal que carrega o formulário HTML
+	       
 	        get("/", (request, response) -> {
-	            response.redirect("/index.html"); // Redireciona para o formulário
+	            response.redirect("/index.html");
 	            return null;
 	        });
 
-	        // C (Create) - Adicionar um novo produto
+	 
 	        post("/produtos", (request, response) -> {
 	            response.type("application/json");
 	            produto newProduto = gson.fromJson(request.body(), produto.class);
